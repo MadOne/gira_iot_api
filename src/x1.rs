@@ -1,3 +1,8 @@
+use crate::covers::Blind;
+use crate::covers::Blinds;
+use crate::covers::Position;
+use crate::covers::StepUpDown;
+use crate::covers::UpDown;
 use crate::lights::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -13,6 +18,7 @@ pub struct X1<'a> {
     token: Arc<Mutex<Option<String>>>,
     ui: Arc<Mutex<Option<UiResponse>>>,
     pub lights: Lights<'a>,
+    pub blinds: Blinds<'a>,
 }
 
 impl<'a> X1<'a> {
@@ -34,6 +40,7 @@ impl<'a> X1<'a> {
             token: myarc,
             ui: myarc2,
             lights: Lights::new(),
+            blinds: Blinds::new(),
         }
     }
 
@@ -133,7 +140,7 @@ impl<'a> X1<'a> {
         Ok(resp)
     }
 
-    pub fn create_lights(&'a self) {
+    pub fn create_devices(&'a self) {
         let myarc = self.ui.clone();
         let mymutex = myarc.lock().expect("could not lock the mutex");
         let ui = mymutex.clone();
@@ -184,7 +191,40 @@ impl<'a> X1<'a> {
                     //self.lights.lock().unwrap().switchable.push(mylight);
                     //println!("Added light")
                 }
-                "de.gira.schema.channels.BlindWithPos" => (),
+                "de.gira.schema.channels.BlindWithPos" => {
+                    //let index_stepupdown
+                    if function.dataPoints.len() != 3 {
+                        println!("invalid blind! {}", function.displayName);
+                        continue;
+                    }
+
+                    let mystepupdown = StepUpDown {
+                        x1: &self,
+                        uid: function.dataPoints[0].uid.clone(),
+                        val: 0,
+                    };
+                    let myupdown = UpDown {
+                        x1: &self,
+                        uid: function.dataPoints[1].uid.clone(),
+                        val: 0,
+                    };
+                    let myposition = Position {
+                        x1: &self,
+                        uid: function.dataPoints[2].uid.clone(),
+                        val: 0,
+                    };
+
+                    let myblind = Blind {
+                        x1: &self,
+                        name: function.displayName,
+                        step_up_down: mystepupdown,
+                        up_down: myupdown,
+                        position: myposition,
+                    };
+                    self.blinds.add(myblind);
+                    //self.lights.lock().unwrap().switchable.push(mylight);
+                    println!("Added blind")
+                }
                 _ => (),
             }
         }
