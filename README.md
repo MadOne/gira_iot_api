@@ -1,7 +1,10 @@
 # gira_iot_api
 
-Example usage:
+gira_iot_api enables you to controll your Gira X1 / Homeserver through the Gira IOT API.
 
+:warning: **Warning:** This project is in a very early stage. Everything might change. Nevertheless feedback/contribution is welcome.
+
+Example usage:
 ```rust
 use gira_iot_api::x1::X1;
 
