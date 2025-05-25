@@ -11,8 +11,8 @@ pub struct SwitchedLight<'a> {
 pub struct DimmedLight<'a> {
     pub x1: &'a x1::X1<'a>,
     pub name: String,
-    pub switch: &'a Switch<'a>,
-    pub dimmer: &'a Dimm<'a>,
+    pub switch: Option<Switch<'a>>,
+    pub dimmer: Option<Dimm<'a>>,
 }
 #[derive(Clone)]
 pub struct TunableLight<'a> {
@@ -94,6 +94,8 @@ impl<'a> DimmableLights<'a> {
             .get(id as usize)
             .unwrap()
             .switch
+            .clone()
+            .expect("Function On/Off not setup. Missing Datapoints")
             .on()
             .await;
     }
@@ -104,6 +106,8 @@ impl<'a> DimmableLights<'a> {
             .get(id as usize)
             .unwrap()
             .switch
+            .clone()
+            .expect("Function On/Off not setup. Missing Datapoints")
             .off()
             .await;
     }
@@ -114,6 +118,8 @@ impl<'a> DimmableLights<'a> {
             .get(id as usize)
             .unwrap()
             .dimmer
+            .clone()
+            .expect("Function Dimming not setup. Missing Datapoints")
             .set_val(val)
             .await;
     }

@@ -181,7 +181,7 @@ impl<'a> X1<'a> {
 
                     for (pindex, point) in function.dataPoints.iter().enumerate() {
                         match point.name.as_str() {
-                            "Step-Up-Down" => {
+                            "OnOff" => {
                                 let myswitch = Switch {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
@@ -198,6 +198,39 @@ impl<'a> X1<'a> {
                         switch: myswitch_option,
                     };
                     self.lights.switchable.add(mylight);
+                }
+                "de.gira.schema.channels.KNX.Dimmer" => {
+                    let mut myswitch_option: Option<Switch> = None;
+                    let mut mydimm_option: Option<Dimm> = None;
+
+                    for (pindex, point) in function.dataPoints.iter().enumerate() {
+                        match point.name.as_str() {
+                            "OnOff" => {
+                                let myswitch = Switch {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                myswitch_option = Some(myswitch)
+                            }
+                            "Brightness" => {
+                                let mydimm = Dimm {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                mydimm_option = Some(mydimm)
+                            }
+                            _ => (),
+                        }
+                    }
+                    let mylight = DimmedLight {
+                        x1: &self,
+                        name: function.displayName,
+                        switch: myswitch_option,
+                        dimmer: mydimm_option,
+                    };
+                    self.lights.dimmable.add(mylight);
                 }
                 "de.gira.schema.channels.BlindWithPos" => {
                     let mut mystepupdown_option: Option<StepUpDown<'_>> = None;
