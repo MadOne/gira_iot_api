@@ -5,9 +5,10 @@ use crate::x1;
 pub struct Blind<'a> {
     pub x1: &'a x1::X1<'a>,
     pub name: String,
-    pub step_up_down: StepUpDown<'a>,
-    pub up_down: UpDown<'a>,
-    pub position: Position<'a>,
+    pub step_up_down: Option<StepUpDown<'a>>,
+    pub up_down: Option<UpDown<'a>>,
+    pub movement: Option<Movement<'a>>,
+    pub position: Option<Position<'a>>,
 }
 
 pub struct Blinds<'a> {
@@ -36,6 +37,8 @@ impl<'a> Blinds<'a> {
             .get(id as usize)
             .unwrap()
             .step_up_down
+            .clone()
+            .expect("Function STEP up/down not setup. Missing Datapoints")
             .step_up()
             .await;
     }
@@ -46,6 +49,8 @@ impl<'a> Blinds<'a> {
             .get(id as usize)
             .unwrap()
             .step_up_down
+            .clone()
+            .expect("Function STEP up/down not setup. Missing Datapoints")
             .step_down()
             .await;
     }
@@ -56,6 +61,8 @@ impl<'a> Blinds<'a> {
             .get(id as usize)
             .unwrap()
             .up_down
+            .clone()
+            .expect("Function up/down not setup. Missing Datapoints")
             .up()
             .await;
     }
@@ -66,6 +73,8 @@ impl<'a> Blinds<'a> {
             .get(id as usize)
             .unwrap()
             .up_down
+            .clone()
+            .expect("Function up/down not setup. Missing Datapoints")
             .down()
             .await;
     }
@@ -76,7 +85,33 @@ impl<'a> Blinds<'a> {
             .get(id as usize)
             .unwrap()
             .position
+            .clone()
+            .expect("Function Position not setup. Missing Datapoints")
             .set_val(position)
+            .await;
+    }
+    pub async fn movement_on(&'a self, id: u8) {
+        self.blinds
+            .lock()
+            .unwrap()
+            .get(id as usize)
+            .unwrap()
+            .movement
+            .clone()
+            .expect("Function Movement not setup. Missing Datapoints")
+            .set_val(1)
+            .await;
+    }
+    pub async fn movement_off(&'a self, id: u8) {
+        self.blinds
+            .lock()
+            .unwrap()
+            .get(id as usize)
+            .unwrap()
+            .movement
+            .clone()
+            .expect("Function Movement not setup. Missing Datapoints")
+            .set_val(0)
             .await;
     }
 }
@@ -92,13 +127,13 @@ impl StepUpDown<'_> {
         self.x1
             .set_value(self.uid.clone(), 0)
             .await
-            .expect("error switching on light");
+            .expect("error stepping up");
     }
     pub async fn step_down(&self) {
         self.x1
             .set_value(self.uid.clone(), 1)
             .await
-            .expect("error switching on light");
+            .expect("error stepping down");
     }
     pub async fn refresh_val(&mut self) {
         self.x1
@@ -148,7 +183,30 @@ impl Position<'_> {
         self.x1
             .set_value(self.uid.clone(), val)
             .await
-            .expect("error switching on light");
+            .expect("error setting position");
+    }
+
+    pub async fn refresh_val(&mut self) {
+        self.x1
+            .get_value(self.uid.clone())
+            .await
+            .expect("Error refreshing value");
+    }
+}
+
+#[derive(Clone)]
+pub struct Movement<'a> {
+    pub x1: &'a x1::X1<'a>,
+    pub uid: String,
+    pub val: u32,
+}
+
+impl Movement<'_> {
+    pub async fn set_val(&self, val: u16) {
+        self.x1
+            .set_value(self.uid.clone(), val)
+            .await
+            .expect("error setting movement value");
     }
 
     pub async fn refresh_val(&mut self) {

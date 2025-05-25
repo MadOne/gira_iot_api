@@ -1,5 +1,6 @@
 use crate::covers::Blind;
 use crate::covers::Blinds;
+use crate::covers::Movement;
 use crate::covers::Position;
 use crate::covers::StepUpDown;
 use crate::covers::UpDown;
@@ -192,37 +193,58 @@ impl<'a> X1<'a> {
                     //println!("Added light")
                 }
                 "de.gira.schema.channels.BlindWithPos" => {
-                    //let index_stepupdown
-                    if function.dataPoints.len() != 3 {
-                        println!("invalid blind! {}", function.displayName);
-                        continue;
+                    let mut mystepupdown_option: Option<StepUpDown<'_>> = None;
+                    let mut myupdown_option: Option<UpDown<'_>> = None;
+                    let mut myposition_option: Option<Position<'_>> = None;
+                    let mut mymovement_option: Option<Movement<'_>> = None;
+                    for (pindex, point) in function.dataPoints.iter().enumerate() {
+                        match point.name.as_str() {
+                            "Step-Up-Down" => {
+                                let mystepupdown = StepUpDown {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                mystepupdown_option = Some(mystepupdown)
+                            }
+                            "Up-Down" => {
+                                let myupdown = UpDown {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                myupdown_option = Some(myupdown)
+                            }
+                            "Position" => {
+                                let myposition = Position {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                myposition_option = Some(myposition)
+                            }
+                            "Movement" => {
+                                let mymovement = Movement {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                mymovement_option = Some(mymovement)
+                            }
+                            _ => (),
+                        }
                     }
-
-                    let mystepupdown = StepUpDown {
-                        x1: &self,
-                        uid: function.dataPoints[0].uid.clone(),
-                        val: 0,
-                    };
-                    let myupdown = UpDown {
-                        x1: &self,
-                        uid: function.dataPoints[1].uid.clone(),
-                        val: 0,
-                    };
-                    let myposition = Position {
-                        x1: &self,
-                        uid: function.dataPoints[2].uid.clone(),
-                        val: 0,
-                    };
 
                     let myblind = Blind {
                         x1: &self,
                         name: function.displayName,
-                        step_up_down: mystepupdown,
-                        up_down: myupdown,
-                        position: myposition,
+                        step_up_down: mystepupdown_option,
+                        up_down: myupdown_option,
+                        position: myposition_option,
+                        movement: mymovement_option,
                     };
                     self.blinds.add(myblind);
-                    //self.lights.lock().unwrap().switchable.push(mylight);
+
                     println!("Added blind")
                 }
                 _ => (),
