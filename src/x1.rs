@@ -177,20 +177,27 @@ impl<'a> X1<'a> {
                     //println!("Added light")
                 }
                 "de.gira.schema.channels.Switch" => {
-                    let myswitch = Switch {
-                        x1: &self,
-                        uid: function.dataPoints[0].uid.clone(),
-                        val: 0,
-                    };
+                    let mut myswitch_option: Option<Switch> = None;
 
+                    for (pindex, point) in function.dataPoints.iter().enumerate() {
+                        match point.name.as_str() {
+                            "Step-Up-Down" => {
+                                let myswitch = Switch {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                myswitch_option = Some(myswitch)
+                            }
+                            _ => (),
+                        }
+                    }
                     let mylight = SwitchedLight {
                         x1: &self,
                         name: function.displayName,
-                        switch: myswitch,
+                        switch: myswitch_option,
                     };
                     self.lights.switchable.add(mylight);
-                    //self.lights.lock().unwrap().switchable.push(mylight);
-                    //println!("Added light")
                 }
                 "de.gira.schema.channels.BlindWithPos" => {
                     let mut mystepupdown_option: Option<StepUpDown<'_>> = None;

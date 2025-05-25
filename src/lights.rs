@@ -5,7 +5,7 @@ use crate::x1;
 pub struct SwitchedLight<'a> {
     pub x1: &'a x1::X1<'a>,
     pub name: String,
-    pub switch: Switch<'a>,
+    pub switch: Option<Switch<'a>>,
 }
 
 pub struct DimmedLight<'a> {
@@ -49,6 +49,8 @@ impl<'a> SwitchableLights<'a> {
             .get(id as usize)
             .unwrap()
             .switch
+            .clone()
+            .expect("Function On/Off not setup. Missing Datapoints")
             .on()
             .await;
     }
@@ -59,6 +61,8 @@ impl<'a> SwitchableLights<'a> {
             .get(id as usize)
             .unwrap()
             .switch
+            .clone()
+            .expect("Function On/Off not setup. Missing Datapoints")
             .off()
             .await;
     }
