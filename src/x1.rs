@@ -171,7 +171,7 @@ impl<'a> X1<'a> {
                                 };
                                 mydimm_option = Some(mydimm)
                             }
-                            "Color-Temp" => {
+                            "Color-Temperature" => {
                                 let mycolortemp = ColorTemp {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
