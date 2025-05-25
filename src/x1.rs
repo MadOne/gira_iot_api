@@ -149,32 +149,47 @@ impl<'a> X1<'a> {
         for function in uii.functions {
             match function.channelType.as_str() {
                 "de.gira.schema.channels.DimmerWhite" => {
-                    let myswitch = Switch {
-                        x1: &self,
-                        uid: function.dataPoints[0].uid.clone(),
-                        val: 0,
-                    };
-                    let mydimmer = Dimm {
-                        x1: &self,
-                        uid: function.dataPoints[1].uid.clone(),
-                        val: 0,
-                    };
-                    let mytuner = ColorTemp {
-                        x1: &self,
-                        uid: function.dataPoints[2].uid.clone(),
-                        val: 0,
-                    };
+                    let mut myswitch_option: Option<Switch> = None;
+                    let mut mydimm_option: Option<Dimm> = None;
+                    let mut mycolortemp_option: Option<ColorTemp> = None;
+
+                    for (pindex, point) in function.dataPoints.iter().enumerate() {
+                        match point.name.as_str() {
+                            "OnOff" => {
+                                let myswitch = Switch {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                myswitch_option = Some(myswitch)
+                            }
+                            "Brightness" => {
+                                let mydimm = Dimm {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                mydimm_option = Some(mydimm)
+                            }
+                            "Color-Temp" => {
+                                let mycolortemp = ColorTemp {
+                                    x1: &self,
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: 0,
+                                };
+                                mycolortemp_option = Some(mycolortemp)
+                            }
+                            _ => (),
+                        }
+                    }
                     let mylight = TunableLight {
                         x1: &self,
                         name: function.displayName,
-                        switch: myswitch,
-                        dimmer: mydimmer,
-                        tuner: mytuner,
+                        switch: myswitch_option,
+                        dimmer: mydimm_option,
+                        tuner: mycolortemp_option,
                     };
                     self.lights.tunable.add(mylight);
-                    //self.lights.lock().unwrap().tunable.push(mylight);
-                    //lights.tunable.push(mylight);
-                    //println!("Added light")
                 }
                 "de.gira.schema.channels.Switch" => {
                     let mut myswitch_option: Option<Switch> = None;

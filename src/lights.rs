@@ -18,9 +18,9 @@ pub struct DimmedLight<'a> {
 pub struct TunableLight<'a> {
     pub x1: &'a x1::X1<'a>,
     pub name: String,
-    pub switch: Switch<'a>,
-    pub dimmer: Dimm<'a>,
-    pub tuner: ColorTemp<'a>,
+    pub switch: Option<Switch<'a>>,
+    pub dimmer: Option<Dimm<'a>>,
+    pub tuner: Option<ColorTemp<'a>>,
 }
 
 pub struct SwitchableLights<'a> {
@@ -150,6 +150,8 @@ impl<'a> TunableLights<'a> {
             .get(id as usize)
             .unwrap()
             .switch
+            .clone()
+            .expect("Function On/Off not setup. Missing Datapoints")
             .on()
             .await;
     }
@@ -160,6 +162,8 @@ impl<'a> TunableLights<'a> {
             .get(id as usize)
             .unwrap()
             .switch
+            .clone()
+            .expect("Function On/Off not setup. Missing Datapoints")
             .off()
             .await;
     }
@@ -170,6 +174,8 @@ impl<'a> TunableLights<'a> {
             .get(id as usize)
             .unwrap()
             .dimmer
+            .clone()
+            .expect("Function Dimming not setup. Missing Datapoints")
             .set_val(val)
             .await;
     }
@@ -180,6 +186,8 @@ impl<'a> TunableLights<'a> {
             .get(id as usize)
             .unwrap()
             .tuner
+            .clone()
+            .expect("Function ColorTemp not setup. Missing Datapoints")
             .set_val(color)
             .await;
     }
