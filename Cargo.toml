@@ -1,10 +1,11 @@
+#[package]
 [package]
 name = "gira_iot_api"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tokio = { version = "1.45.0", features = ["full"] }
+tokio = { version = "1.45.1", features = ["full"] }
 reqwest = "0.12.15"
 serde_json = { version = "1.0.140", features = [] }
 serde = { version = "1.0.219", features = ["derive"] }

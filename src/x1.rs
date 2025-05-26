@@ -8,9 +8,11 @@ use crate::lights::*;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::Arc;
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 
+#[derive(Clone, Debug)]
 pub struct X1<'a> {
     addr: String,
     user: String,
@@ -65,7 +67,7 @@ impl<'a> X1<'a> {
             .get("token")
             .expect("getting json from response failed");
         let myarc = self.token.clone();
-        let mut mymutex = myarc.lock().expect("could not lock the mutex");
+        let mut mymutex = myarc.try_lock().expect("could not lock the mutex");
         *mymutex = Some(token.to_owned());
 
         //self.get_ui().await;
@@ -74,7 +76,7 @@ impl<'a> X1<'a> {
 
     pub fn get_token(&self) -> Option<String> {
         let myarc = self.token.clone();
-        let mymutex = myarc.lock().expect("could not lock the mutex");
+        let mymutex = myarc.try_lock().expect("could not lock the mutex");
         mymutex.clone()
     }
 
@@ -95,24 +97,36 @@ impl<'a> X1<'a> {
         .expect("failed to get text of UI response");
         let myresp: UiResponse = serde_json::from_str(&resp).unwrap();
         let myarc = self.ui.clone();
-        let mut mymutex = myarc.lock().expect("could not lock the mutex");
+        let mut mymutex = myarc.try_lock().expect("could not lock the mutex");
         *mymutex = Some(myresp);
         resp
     }
 
-    pub async fn get_value(&self, uid: String) -> Result<String, reqwest::Error> {
+    pub async fn get_value(&self, uid: String) -> Result<u16, reqwest::Error> {
         let token = self
             .get_token()
             .expect("Error geting token. Not logged in?");
         let addr = self.addr.clone();
-        let resp = self
-            .client
-            .get(format!("https://{addr}/api/v2/values/{uid}?token={token}"))
-            .send()
-            .await?
-            .text()
-            .await?;
-        Ok(resp)
+        if true {
+            let resp = self
+                .client
+                .get(format!("https://{addr}/api/v2/values/{uid}?token={token}"))
+                .send()
+                .await?
+                .text()
+                .await?;
+
+            let myresp: Value = serde_json::from_str(&resp).unwrap();
+            println!("{:?}", myresp);
+            if let Some(val) = myresp.values {
+                let a = val[0].get("value").unwrap();
+                let a: Vec<&str> = a.split('.').collect();
+                let a = a[0].to_string();
+                let b: u16 = a.parse().unwrap();
+                return Ok(b);
+            }
+        }
+        Ok(0)
     }
 
     pub async fn set_value(&self, uid: String, value: u16) -> Result<String, reqwest::Error> {
@@ -141,9 +155,9 @@ impl<'a> X1<'a> {
         Ok(resp)
     }
 
-    pub fn create_devices(&'a self) {
+    pub async fn create_devices(&'a self) {
         let myarc = self.ui.clone();
-        let mymutex = myarc.lock().expect("could not lock the mutex");
+        let mymutex = myarc.try_lock().expect("could not lock the mutex");
         let ui = mymutex.clone();
         let uii = ui.expect("Error getting ui repsonse from mutex");
         for function in uii.functions {
@@ -159,7 +173,10 @@ impl<'a> X1<'a> {
                                 let myswitch = Switch {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 myswitch_option = Some(myswitch)
                             }
@@ -167,7 +184,10 @@ impl<'a> X1<'a> {
                                 let mydimm = Dimm {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 mydimm_option = Some(mydimm)
                             }
@@ -175,7 +195,10 @@ impl<'a> X1<'a> {
                                 let mycolortemp = ColorTemp {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 mycolortemp_option = Some(mycolortemp)
                             }
@@ -200,7 +223,10 @@ impl<'a> X1<'a> {
                                 let myswitch = Switch {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 myswitch_option = Some(myswitch)
                             }
@@ -224,7 +250,10 @@ impl<'a> X1<'a> {
                                 let myswitch = Switch {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 myswitch_option = Some(myswitch)
                             }
@@ -232,7 +261,10 @@ impl<'a> X1<'a> {
                                 let mydimm = Dimm {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 mydimm_option = Some(mydimm)
                             }
@@ -258,7 +290,10 @@ impl<'a> X1<'a> {
                                 let mystepupdown = StepUpDown {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 mystepupdown_option = Some(mystepupdown)
                             }
@@ -266,7 +301,10 @@ impl<'a> X1<'a> {
                                 let myupdown = UpDown {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 myupdown_option = Some(myupdown)
                             }
@@ -274,7 +312,10 @@ impl<'a> X1<'a> {
                                 let myposition = Position {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 myposition_option = Some(myposition)
                             }
@@ -282,7 +323,10 @@ impl<'a> X1<'a> {
                                 let mymovement = Movement {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: 0,
+                                    val: self
+                                        .get_value(function.dataPoints[pindex].uid.clone())
+                                        .await
+                                        .unwrap(),
                                 };
                                 mymovement_option = Some(mymovement)
                             }
@@ -343,4 +387,10 @@ pub struct UiResponse {
     functions: Vec<Function>,
     locations: Vec<Location>,
     trades: Vec<Trade>,
+}
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Value {
+    pub values: Option<Vec<HashMap<String, String>>>,
+    pub error: Option<HashMap<String, String>>,
 }

@@ -1,7 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::x1;
-
+#[derive(Clone, Debug)]
 pub struct Blind<'a> {
     pub x1: &'a x1::X1<'a>,
     pub name: String,
@@ -10,7 +11,7 @@ pub struct Blind<'a> {
     pub movement: Option<Movement<'a>>,
     pub position: Option<Position<'a>>,
 }
-
+#[derive(Clone, Debug)]
 pub struct Blinds<'a> {
     pub blinds: Arc<Mutex<Vec<Blind<'a>>>>,
 }
@@ -22,17 +23,17 @@ impl<'a> Blinds<'a> {
         Blinds { blinds: arc }
     }
     pub fn add(&'a self, light: Blind<'a>) {
-        self.blinds.lock().unwrap().push(light);
+        self.blinds.try_lock().unwrap().push(light);
     }
     pub fn list(&self) {
         println!("Blinds:");
-        for (index, tuneable) in self.blinds.lock().unwrap().iter().enumerate() {
+        for (index, tuneable) in self.blinds.try_lock().unwrap().iter().enumerate() {
             println!("{index}: {}", tuneable.name);
         }
     }
     pub async fn step_up(&'a self, id: u8) {
         self.blinds
-            .lock()
+            .try_lock()
             .unwrap()
             .get(id as usize)
             .unwrap()
@@ -44,7 +45,7 @@ impl<'a> Blinds<'a> {
     }
     pub async fn step_down(&'a self, id: u8) {
         self.blinds
-            .lock()
+            .try_lock()
             .unwrap()
             .get(id as usize)
             .unwrap()
@@ -56,7 +57,7 @@ impl<'a> Blinds<'a> {
     }
     pub async fn up(&'a self, id: u8) {
         self.blinds
-            .lock()
+            .try_lock()
             .unwrap()
             .get(id as usize)
             .unwrap()
@@ -68,7 +69,7 @@ impl<'a> Blinds<'a> {
     }
     pub async fn down(&'a self, id: u8) {
         self.blinds
-            .lock()
+            .try_lock()
             .unwrap()
             .get(id as usize)
             .unwrap()
@@ -80,7 +81,7 @@ impl<'a> Blinds<'a> {
     }
     pub async fn position(&'a self, id: u8, position: u16) {
         self.blinds
-            .lock()
+            .try_lock()
             .unwrap()
             .get(id as usize)
             .unwrap()
@@ -92,7 +93,7 @@ impl<'a> Blinds<'a> {
     }
     pub async fn movement_on(&'a self, id: u8) {
         self.blinds
-            .lock()
+            .try_lock()
             .unwrap()
             .get(id as usize)
             .unwrap()
@@ -104,7 +105,7 @@ impl<'a> Blinds<'a> {
     }
     pub async fn movement_off(&'a self, id: u8) {
         self.blinds
-            .lock()
+            .try_lock()
             .unwrap()
             .get(id as usize)
             .unwrap()
@@ -116,11 +117,11 @@ impl<'a> Blinds<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StepUpDown<'a> {
     pub x1: &'a x1::X1<'a>,
     pub uid: String,
-    pub val: u32,
+    pub val: u16,
 }
 impl StepUpDown<'_> {
     pub async fn step_up(&self) {
@@ -143,11 +144,11 @@ impl StepUpDown<'_> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UpDown<'a> {
     pub x1: &'a x1::X1<'a>,
     pub uid: String,
-    pub val: u32,
+    pub val: u16,
 }
 impl UpDown<'_> {
     pub async fn up(&self) {
@@ -171,11 +172,11 @@ impl UpDown<'_> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Position<'a> {
     pub x1: &'a x1::X1<'a>,
     pub uid: String,
-    pub val: u32,
+    pub val: u16,
 }
 
 impl Position<'_> {
@@ -194,11 +195,11 @@ impl Position<'_> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Movement<'a> {
     pub x1: &'a x1::X1<'a>,
     pub uid: String,
-    pub val: u32,
+    pub val: u16,
 }
 
 impl Movement<'_> {
