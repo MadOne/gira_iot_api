@@ -8,7 +8,6 @@ use crate::lights::*;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -117,7 +116,7 @@ impl<'a> X1<'a> {
                 .await?;
 
             let myresp: Value = serde_json::from_str(&resp).unwrap();
-            println!("{:?}", myresp);
+            //println!("{:?}", myresp);
             if let Some(val) = myresp.values {
                 let a = val[0].get("value").unwrap();
                 let a: Vec<&str> = a.split('.').collect();
@@ -127,6 +126,32 @@ impl<'a> X1<'a> {
             }
         }
         Ok(0)
+    }
+    pub async fn get_fn_values(&self, uid: String) -> Result<HashMap<String, u16>, reqwest::Error> {
+        let token = self
+            .get_token()
+            .expect("Error geting token. Not logged in?");
+        let addr = self.addr.clone();
+        let mut values: HashMap<String, u16> = HashMap::new();
+        if true {
+            let resp = self
+                .client
+                .get(format!("https://{addr}/api/v2/values/{uid}?token={token}"))
+                .send()
+                .await?
+                .text()
+                .await?;
+
+            let myresp: Value = serde_json::from_str(&resp).unwrap();
+
+            for val in myresp.values.unwrap_or(vec![]) {
+                //let key = val.get("uid").unwrap();
+                let value: u16 = val.get("value").unwrap().parse().unwrap_or(0);
+                values.insert(val.get("uid").unwrap().to_owned(), value);
+            }
+            println!("{:?}", values);
+        }
+        Ok(values)
     }
 
     pub async fn set_value(&self, uid: String, value: u16) -> Result<String, reqwest::Error> {
@@ -161,6 +186,7 @@ impl<'a> X1<'a> {
         let ui = mymutex.clone();
         let uii = ui.expect("Error getting ui repsonse from mutex");
         for function in uii.functions {
+            let values = self.get_fn_values(function.uid).await.unwrap();
             match function.channelType.as_str() {
                 "de.gira.schema.channels.DimmerWhite" => {
                     let mut myswitch_option: Option<Switch> = None;
@@ -173,10 +199,10 @@ impl<'a> X1<'a> {
                                 let myswitch = Switch {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 myswitch_option = Some(myswitch)
                             }
@@ -184,10 +210,10 @@ impl<'a> X1<'a> {
                                 let mydimm = Dimm {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 mydimm_option = Some(mydimm)
                             }
@@ -195,10 +221,10 @@ impl<'a> X1<'a> {
                                 let mycolortemp = ColorTemp {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 mycolortemp_option = Some(mycolortemp)
                             }
@@ -223,10 +249,10 @@ impl<'a> X1<'a> {
                                 let myswitch = Switch {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 myswitch_option = Some(myswitch)
                             }
@@ -250,10 +276,10 @@ impl<'a> X1<'a> {
                                 let myswitch = Switch {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 myswitch_option = Some(myswitch)
                             }
@@ -261,10 +287,10 @@ impl<'a> X1<'a> {
                                 let mydimm = Dimm {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 mydimm_option = Some(mydimm)
                             }
@@ -284,16 +310,17 @@ impl<'a> X1<'a> {
                     let mut myupdown_option: Option<UpDown<'_>> = None;
                     let mut myposition_option: Option<Position<'_>> = None;
                     let mut mymovement_option: Option<Movement<'_>> = None;
+
                     for (pindex, point) in function.dataPoints.iter().enumerate() {
                         match point.name.as_str() {
                             "Step-Up-Down" => {
                                 let mystepupdown = StepUpDown {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 mystepupdown_option = Some(mystepupdown)
                             }
@@ -301,10 +328,10 @@ impl<'a> X1<'a> {
                                 let myupdown = UpDown {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 myupdown_option = Some(myupdown)
                             }
@@ -312,10 +339,10 @@ impl<'a> X1<'a> {
                                 let myposition = Position {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 myposition_option = Some(myposition)
                             }
@@ -323,10 +350,10 @@ impl<'a> X1<'a> {
                                 let mymovement = Movement {
                                     x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
-                                    val: self
-                                        .get_value(function.dataPoints[pindex].uid.clone())
-                                        .await
-                                        .unwrap(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
                                 };
                                 mymovement_option = Some(mymovement)
                             }
