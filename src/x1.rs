@@ -1,9 +1,3 @@
-use crate::covers::Blind;
-use crate::covers::Blinds;
-use crate::covers::Movement;
-use crate::covers::Position;
-use crate::covers::StepUpDown;
-use crate::covers::UpDown;
 use crate::lights::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -12,18 +6,18 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Clone, Debug)]
-pub struct X1<'a> {
+pub struct X1 {
     addr: String,
     user: String,
     password: String,
     client: reqwest::Client,
     token: Arc<Mutex<Option<String>>>,
     ui: Arc<Mutex<Option<UiResponse>>>,
-    pub lights: Lights<'a>,
-    pub blinds: Blinds<'a>,
+    pub lights: Lights,
+    //blinds: Vec<Blind>
 }
 
-impl<'a> X1<'a> {
+impl X1 {
     pub fn new(addr: &str, user: &str, password: &str) -> Self {
         let client: reqwest::Client = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
@@ -41,12 +35,19 @@ impl<'a> X1<'a> {
             client,
             token: myarc,
             ui: myarc2,
-            lights: Lights::new(),
-            blinds: Blinds::new(),
+            lights: Lights {
+                light: Arc::new(Mutex::new(vec![])),
+            },
+            //blinds_ vec![]
         }
     }
 
-    pub async fn connect(&'a self) {
+    pub async fn connect(&self) {
+        if self.token.lock().await.is_some() {
+            println!("Already connected. Skipping");
+            return;
+        }
+
         let body = "{\"client\":\"de.madone.x1client\"}";
         let addr = self.addr.clone();
         let token_json_str = self
@@ -68,9 +69,6 @@ impl<'a> X1<'a> {
         let myarc = self.token.clone();
         let mut mymutex = myarc.try_lock().expect("could not lock the mutex");
         *mymutex = Some(token.to_owned());
-
-        //self.get_ui().await;
-        //self.create_lights();
     }
 
     pub fn get_token(&self) -> Option<String> {
@@ -80,6 +78,11 @@ impl<'a> X1<'a> {
     }
 
     pub async fn get_ui(&self) -> String {
+        if self.ui.clone().lock().await.clone().is_some() {
+            println!("Already polled ui. Skipping");
+            return "".to_string();
+        }
+
         let token = self
             .get_token()
             .expect("failed to get token. Not connected?");
@@ -149,7 +152,7 @@ impl<'a> X1<'a> {
                 let value: u16 = val.get("value").unwrap().parse().unwrap_or(0);
                 values.insert(val.get("uid").unwrap().to_owned(), value);
             }
-            println!("{:?}", values);
+            //println!("{:?}", values);
         }
         Ok(values)
     }
@@ -180,24 +183,40 @@ impl<'a> X1<'a> {
         Ok(resp)
     }
 
-    pub async fn create_devices(&'a self) {
+    pub async fn create_devices(&self) {
+        let light_count: usize = self.lights.light.lock().await.len();
+        let blind_count: usize = 0;
+        if light_count + blind_count != 0 {
+            println!("Already created devices. Skipping");
+            return;
+        }
         let myarc = self.ui.clone();
         let mymutex = myarc.try_lock().expect("could not lock the mutex");
         let ui = mymutex.clone();
         let uii = ui.expect("Error getting ui repsonse from mutex");
         for function in uii.functions {
-            let values = self.get_fn_values(function.uid).await.unwrap();
+            let values = self.get_fn_values(function.uid.clone()).await.unwrap();
             match function.channelType.as_str() {
-                "de.gira.schema.channels.DimmerWhite" => {
+                "de.gira.schema.channels.Switch"
+                | "de.gira.schema.channels.DimmerWhite"
+                | "de.gira.schema.channels.KNX.Dimmer" => {
                     let mut myswitch_option: Option<Switch> = None;
-                    let mut mydimm_option: Option<Dimm> = None;
-                    let mut mycolortemp_option: Option<ColorTemp> = None;
+                    let mut mydimm_option: Option<Dimmer> = None;
+                    let mut mytuner_option: Option<Tuner> = None;
+                    let mut mycolor_option: Option<Color> = None;
+
+                    let mut light_type = LightType::UNKNOWN;
+                    match function.channelType.as_str() {
+                        "de.gira.schema.channels.Switch" => light_type = LightType::SWITCH,
+                        "de.gira.schema.channels.DimmerWhite" => light_type = LightType::TUNE,
+                        "de.gira.schema.channels.KNX.Dimmer" => light_type = LightType::DIMM,
+                        _ => light_type = LightType::UNKNOWN,
+                    }
 
                     for (pindex, point) in function.dataPoints.iter().enumerate() {
                         match point.name.as_str() {
                             "OnOff" => {
                                 let myswitch = Switch {
-                                    x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
                                     val: values
                                         .get(function.dataPoints[pindex].uid.as_str())
@@ -207,8 +226,7 @@ impl<'a> X1<'a> {
                                 myswitch_option = Some(myswitch)
                             }
                             "Brightness" => {
-                                let mydimm = Dimm {
-                                    x1: &self,
+                                let mydimm = Dimmer {
                                     uid: function.dataPoints[pindex].uid.clone(),
                                     val: values
                                         .get(function.dataPoints[pindex].uid.as_str())
@@ -218,93 +236,30 @@ impl<'a> X1<'a> {
                                 mydimm_option = Some(mydimm)
                             }
                             "Color-Temperature" => {
-                                let mycolortemp = ColorTemp {
-                                    x1: &self,
+                                let mytuner = Tuner {
                                     uid: function.dataPoints[pindex].uid.clone(),
                                     val: values
                                         .get(function.dataPoints[pindex].uid.as_str())
                                         .unwrap()
                                         .to_owned(),
                                 };
-                                mycolortemp_option = Some(mycolortemp)
+                                mytuner_option = Some(mytuner)
                             }
                             _ => (),
                         }
                     }
-                    let mylight = TunableLight {
-                        x1: &self,
+                    let mylight = Light {
                         name: function.displayName,
+                        uid: function.uid.clone(),
+                        lighttype: light_type,
                         switch: myswitch_option,
                         dimmer: mydimm_option,
-                        tuner: mycolortemp_option,
+                        tuner: mytuner_option,
+                        color: mycolor_option,
                     };
-                    self.lights.tunable.add(mylight);
+                    self.lights.light.lock().await.push(mylight);
                 }
-                "de.gira.schema.channels.Switch" => {
-                    let mut myswitch_option: Option<Switch> = None;
-
-                    for (pindex, point) in function.dataPoints.iter().enumerate() {
-                        match point.name.as_str() {
-                            "OnOff" => {
-                                let myswitch = Switch {
-                                    x1: &self,
-                                    uid: function.dataPoints[pindex].uid.clone(),
-                                    val: values
-                                        .get(function.dataPoints[pindex].uid.as_str())
-                                        .unwrap()
-                                        .to_owned(),
-                                };
-                                myswitch_option = Some(myswitch)
-                            }
-                            _ => (),
-                        }
-                    }
-                    let mylight = SwitchedLight {
-                        x1: &self,
-                        name: function.displayName,
-                        switch: myswitch_option,
-                    };
-                    self.lights.switchable.add(mylight);
-                }
-                "de.gira.schema.channels.KNX.Dimmer" => {
-                    let mut myswitch_option: Option<Switch> = None;
-                    let mut mydimm_option: Option<Dimm> = None;
-
-                    for (pindex, point) in function.dataPoints.iter().enumerate() {
-                        match point.name.as_str() {
-                            "OnOff" => {
-                                let myswitch = Switch {
-                                    x1: &self,
-                                    uid: function.dataPoints[pindex].uid.clone(),
-                                    val: values
-                                        .get(function.dataPoints[pindex].uid.as_str())
-                                        .unwrap()
-                                        .to_owned(),
-                                };
-                                myswitch_option = Some(myswitch)
-                            }
-                            "Brightness" => {
-                                let mydimm = Dimm {
-                                    x1: &self,
-                                    uid: function.dataPoints[pindex].uid.clone(),
-                                    val: values
-                                        .get(function.dataPoints[pindex].uid.as_str())
-                                        .unwrap()
-                                        .to_owned(),
-                                };
-                                mydimm_option = Some(mydimm)
-                            }
-                            _ => (),
-                        }
-                    }
-                    let mylight = DimmedLight {
-                        x1: &self,
-                        name: function.displayName,
-                        switch: myswitch_option,
-                        dimmer: mydimm_option,
-                    };
-                    self.lights.dimmable.add(mylight);
-                }
+                /*
                 "de.gira.schema.channels.BlindWithPos" => {
                     let mut mystepupdown_option: Option<StepUpDown<'_>> = None;
                     let mut myupdown_option: Option<UpDown<'_>> = None;
@@ -373,6 +328,7 @@ impl<'a> X1<'a> {
 
                     println!("Added blind")
                 }
+                */
                 _ => (),
             }
         }

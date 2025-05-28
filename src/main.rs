@@ -7,7 +7,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     myx1.get_ui().await;
     myx1.create_devices().await;
 
-    let list = myx1.lights.tunable.list();
+    let list = myx1.lights.list().await;
+
+    let _ = myx1.lights.light.lock().await[18].tune(&myx1, 5000).await;
     println!("{:?}", list);
     Ok(())
 }
