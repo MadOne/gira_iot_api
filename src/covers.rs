@@ -1,219 +1,69 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::x1;
+use crate::x1::X1;
 #[derive(Clone, Debug)]
-pub struct Blind<'a> {
-    pub x1: &'a x1::X1<'a>,
+pub struct Blind {
     pub name: String,
-    pub step_up_down: Option<StepUpDown<'a>>,
-    pub up_down: Option<UpDown<'a>>,
-    pub movement: Option<Movement<'a>>,
-    pub position: Option<Position<'a>>,
+    pub step_up_down: Option<StepUpDown>,
+    pub up_down: Option<UpDown>,
+    pub movement: Option<Movement>,
+    pub position: Option<Position>,
 }
+
+impl Blind {
+    pub async fn up(&self, x1: &X1) {
+        let up_down_uid = self.up_down.clone().expect("Error getting UpDown").uid;
+
+        let _res = x1.set_value(up_down_uid, 0).await;
+    }
+    pub async fn down(&self, x1: &X1) {
+        let up_down_uid = self.up_down.clone().expect("Error getting UpDown").uid;
+
+        let _res = x1.set_value(up_down_uid, 1).await;
+    }
+}
+
 #[derive(Clone, Debug)]
-pub struct Blinds<'a> {
-    pub blinds: Arc<Mutex<Vec<Blind<'a>>>>,
+pub struct Blinds {
+    pub blinds: Arc<Mutex<Vec<Blind>>>,
 }
-impl<'a> Blinds<'a> {
-    pub fn new() -> Self {
-        let vector: Vec<Blind> = vec![];
-        let mutex = Mutex::new(vector);
-        let arc = Arc::new(mutex);
-        Blinds { blinds: arc }
-    }
-    pub fn add(&'a self, light: Blind<'a>) {
-        self.blinds.try_lock().unwrap().push(light);
-    }
-    pub fn list(&self) {
-        println!("Blinds:");
-        for (index, tuneable) in self.blinds.try_lock().unwrap().iter().enumerate() {
-            println!("{index}: {}", tuneable.name);
+impl Blinds {
+    pub async fn list(&self) -> Vec<String> {
+        //println!("Lights:");
+        let mut list: Vec<String> = vec![];
+
+        for (_index, blind) in self.blinds.lock().await.iter().enumerate() {
+            list.push(blind.name.clone());
         }
+        list
     }
-    pub async fn step_up(&'a self, id: u8) {
-        self.blinds
-            .try_lock()
-            .unwrap()
-            .get(id as usize)
-            .unwrap()
-            .step_up_down
-            .clone()
-            .expect("Function STEP up/down not setup. Missing Datapoints")
-            .step_up()
-            .await;
-    }
-    pub async fn step_down(&'a self, id: u8) {
-        self.blinds
-            .try_lock()
-            .unwrap()
-            .get(id as usize)
-            .unwrap()
-            .step_up_down
-            .clone()
-            .expect("Function STEP up/down not setup. Missing Datapoints")
-            .step_down()
-            .await;
-    }
-    pub async fn up(&'a self, id: u8) {
-        self.blinds
-            .try_lock()
-            .unwrap()
-            .get(id as usize)
-            .unwrap()
-            .up_down
-            .clone()
-            .expect("Function up/down not setup. Missing Datapoints")
-            .up()
-            .await;
-    }
-    pub async fn down(&'a self, id: u8) {
-        self.blinds
-            .try_lock()
-            .unwrap()
-            .get(id as usize)
-            .unwrap()
-            .up_down
-            .clone()
-            .expect("Function up/down not setup. Missing Datapoints")
-            .down()
-            .await;
-    }
-    pub async fn position(&'a self, id: u8, position: u16) {
-        self.blinds
-            .try_lock()
-            .unwrap()
-            .get(id as usize)
-            .unwrap()
-            .position
-            .clone()
-            .expect("Function Position not setup. Missing Datapoints")
-            .set_val(position)
-            .await;
-    }
-    pub async fn movement_on(&'a self, id: u8) {
-        self.blinds
-            .try_lock()
-            .unwrap()
-            .get(id as usize)
-            .unwrap()
-            .movement
-            .clone()
-            .expect("Function Movement not setup. Missing Datapoints")
-            .set_val(1)
-            .await;
-    }
-    pub async fn movement_off(&'a self, id: u8) {
-        self.blinds
-            .try_lock()
-            .unwrap()
-            .get(id as usize)
-            .unwrap()
-            .movement
-            .clone()
-            .expect("Function Movement not setup. Missing Datapoints")
-            .set_val(0)
-            .await;
+
+    pub async fn get_all(&self) -> Vec<Blind> {
+        self.blinds.lock().await.clone()
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct StepUpDown<'a> {
-    pub x1: &'a x1::X1<'a>,
+pub struct StepUpDown {
     pub uid: String,
     pub val: u16,
-}
-impl StepUpDown<'_> {
-    pub async fn step_up(&self) {
-        self.x1
-            .set_value(self.uid.clone(), 0)
-            .await
-            .expect("error stepping up");
-    }
-    pub async fn step_down(&self) {
-        self.x1
-            .set_value(self.uid.clone(), 1)
-            .await
-            .expect("error stepping down");
-    }
-    pub async fn refresh_val(&mut self) {
-        self.x1
-            .get_value(self.uid.clone())
-            .await
-            .expect("Error refreshing value");
-    }
 }
 
 #[derive(Clone, Debug)]
-pub struct UpDown<'a> {
-    pub x1: &'a x1::X1<'a>,
+pub struct UpDown {
     pub uid: String,
     pub val: u16,
-}
-impl UpDown<'_> {
-    pub async fn up(&self) {
-        self.x1
-            .set_value(self.uid.clone(), 0)
-            .await
-            .expect("error opening blind");
-    }
-    pub async fn down(&self) {
-        self.x1
-            .set_value(self.uid.clone(), 1)
-            .await
-            .expect("error closing blind");
-    }
-
-    pub async fn refresh_val(&mut self) {
-        self.x1
-            .get_value(self.uid.clone())
-            .await
-            .expect("Error refreshing value");
-    }
 }
 
 #[derive(Clone, Debug)]
-pub struct Position<'a> {
-    pub x1: &'a x1::X1<'a>,
+pub struct Position {
     pub uid: String,
     pub val: u16,
-}
-
-impl Position<'_> {
-    pub async fn set_val(&self, val: u16) {
-        self.x1
-            .set_value(self.uid.clone(), val)
-            .await
-            .expect("error setting position");
-    }
-
-    pub async fn refresh_val(&mut self) {
-        self.x1
-            .get_value(self.uid.clone())
-            .await
-            .expect("Error refreshing value");
-    }
 }
 
 #[derive(Clone, Debug)]
-pub struct Movement<'a> {
-    pub x1: &'a x1::X1<'a>,
+pub struct Movement {
     pub uid: String,
     pub val: u16,
-}
-
-impl Movement<'_> {
-    pub async fn set_val(&self, val: u16) {
-        self.x1
-            .set_value(self.uid.clone(), val)
-            .await
-            .expect("error setting movement value");
-    }
-
-    pub async fn refresh_val(&mut self) {
-        self.x1
-            .get_value(self.uid.clone())
-            .await
-            .expect("Error refreshing value");
-    }
 }

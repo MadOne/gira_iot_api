@@ -1,3 +1,4 @@
+use crate::covers::*;
 use crate::lights::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -14,7 +15,7 @@ pub struct X1 {
     token: Arc<Mutex<Option<String>>>,
     ui: Arc<Mutex<Option<UiResponse>>>,
     pub lights: Lights,
-    //blinds: Vec<Blind>
+    blinds: Blinds,
 }
 
 impl X1 {
@@ -38,7 +39,9 @@ impl X1 {
             lights: Lights {
                 light: Arc::new(Mutex::new(vec![])),
             },
-            //blinds_ vec![]
+            blinds: Blinds {
+                blinds: Arc::new(Mutex::new(vec![])),
+            },
         }
     }
 
@@ -203,15 +206,14 @@ impl X1 {
                     let mut myswitch_option: Option<Switch> = None;
                     let mut mydimm_option: Option<Dimmer> = None;
                     let mut mytuner_option: Option<Tuner> = None;
-                    let mut mycolor_option: Option<Color> = None;
+                    let mycolor_option: Option<Color> = None;
 
-                    let mut light_type = LightType::UNKNOWN;
-                    match function.channelType.as_str() {
-                        "de.gira.schema.channels.Switch" => light_type = LightType::SWITCH,
-                        "de.gira.schema.channels.DimmerWhite" => light_type = LightType::TUNE,
-                        "de.gira.schema.channels.KNX.Dimmer" => light_type = LightType::DIMM,
-                        _ => light_type = LightType::UNKNOWN,
-                    }
+                    let light_type = match function.channelType.as_str() {
+                        "de.gira.schema.channels.Switch" => LightType::SWITCH,
+                        "de.gira.schema.channels.DimmerWhite" => LightType::TUNE,
+                        "de.gira.schema.channels.KNX.Dimmer" => LightType::DIMM,
+                        _ => LightType::UNKNOWN,
+                    };
 
                     for (pindex, point) in function.dataPoints.iter().enumerate() {
                         match point.name.as_str() {
@@ -259,18 +261,17 @@ impl X1 {
                     };
                     self.lights.light.lock().await.push(mylight);
                 }
-                /*
+
                 "de.gira.schema.channels.BlindWithPos" => {
-                    let mut mystepupdown_option: Option<StepUpDown<'_>> = None;
-                    let mut myupdown_option: Option<UpDown<'_>> = None;
-                    let mut myposition_option: Option<Position<'_>> = None;
-                    let mut mymovement_option: Option<Movement<'_>> = None;
+                    let mut mystepupdown_option: Option<StepUpDown> = None;
+                    let mut myupdown_option: Option<UpDown> = None;
+                    let mut myposition_option: Option<Position> = None;
+                    let mut mymovement_option: Option<Movement> = None;
 
                     for (pindex, point) in function.dataPoints.iter().enumerate() {
                         match point.name.as_str() {
                             "Step-Up-Down" => {
                                 let mystepupdown = StepUpDown {
-                                    x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
                                     val: values
                                         .get(function.dataPoints[pindex].uid.as_str())
@@ -281,7 +282,6 @@ impl X1 {
                             }
                             "Up-Down" => {
                                 let myupdown = UpDown {
-                                    x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
                                     val: values
                                         .get(function.dataPoints[pindex].uid.as_str())
@@ -292,7 +292,6 @@ impl X1 {
                             }
                             "Position" => {
                                 let myposition = Position {
-                                    x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
                                     val: values
                                         .get(function.dataPoints[pindex].uid.as_str())
@@ -303,7 +302,6 @@ impl X1 {
                             }
                             "Movement" => {
                                 let mymovement = Movement {
-                                    x1: &self,
                                     uid: function.dataPoints[pindex].uid.clone(),
                                     val: values
                                         .get(function.dataPoints[pindex].uid.as_str())
@@ -317,18 +315,17 @@ impl X1 {
                     }
 
                     let myblind = Blind {
-                        x1: &self,
                         name: function.displayName,
                         step_up_down: mystepupdown_option,
                         up_down: myupdown_option,
                         position: myposition_option,
                         movement: mymovement_option,
                     };
-                    self.blinds.add(myblind);
+                    self.blinds.blinds.lock().await.push(myblind);
 
                     println!("Added blind")
                 }
-                */
+
                 _ => (),
             }
         }

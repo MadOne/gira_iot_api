@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::x1::{self, X1};
+use crate::x1::X1;
 
 #[derive(Clone, Debug)]
 pub enum LightType {
@@ -26,7 +26,7 @@ impl Light {
     pub async fn switch_on(&self, x1: &X1) {
         let switch_uid = self.switch.clone().expect("Error getting Switch").uid;
 
-        x1.set_value(switch_uid, 1).await;
+        let _res = x1.set_value(switch_uid, 1).await;
     }
     pub async fn switch_off(&self, x1: &X1) {
         let switch_uid = self.switch.clone().expect("Error getting Switch").uid;
@@ -36,12 +36,12 @@ impl Light {
 
     pub async fn dimm(&self, x1: &X1, value: u16) {
         let dimm_uid = self.dimmer.clone().expect("Error getting Dimmer").uid;
-        x1.set_value(dimm_uid, value).await;
+        let _res = x1.set_value(dimm_uid, value).await;
     }
 
     pub async fn tune(&self, x1: &X1, value: u16) {
         let tune_uid = self.tuner.clone().expect("Error getting Tuner").uid;
-        x1.set_value(tune_uid, value).await;
+        let _res = x1.set_value(tune_uid, value).await;
     }
 }
 #[derive(Clone, Debug)]
@@ -74,8 +74,8 @@ impl Lights {
         //println!("Lights:");
         let mut list: Vec<String> = vec![];
 
-        for (index, light) in self.light.lock().await.iter().enumerate() {
-            let kind = match light.lighttype {
+        for (_index, light) in self.light.lock().await.iter().enumerate() {
+            let _kind = match light.lighttype {
                 LightType::COLOR => ": (Colored light)",
                 LightType::DIMM => ": (Dimmable Light)",
                 LightType::SWITCH => ": (Switchable Light)",
@@ -86,5 +86,9 @@ impl Lights {
             list.push(light.name.clone());
         }
         list
+    }
+
+    pub async fn get_all(&self) -> Vec<Light> {
+        self.light.lock().await.clone()
     }
 }
