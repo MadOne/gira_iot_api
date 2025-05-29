@@ -15,7 +15,7 @@ pub struct X1 {
     token: Arc<Mutex<Option<String>>>,
     ui: Arc<Mutex<Option<UiResponse>>>,
     pub lights: Lights,
-    blinds: Blinds,
+    pub blinds: Blinds,
 }
 
 impl X1 {
