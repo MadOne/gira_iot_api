@@ -20,6 +20,7 @@ pub struct Light {
     pub dimmer: Option<Dimmer>,
     pub tuner: Option<Tuner>,
     pub color: Option<Color>,
+    pub location: Option<u16>,
 }
 
 impl Light {
@@ -40,8 +41,11 @@ impl Light {
     }
 
     pub async fn tune(&self, x1: &X1, value: u16) {
+        println!("Tune fired2!");
         let tune_uid = self.tuner.clone().expect("Error getting Tuner").uid;
-        let _res = x1.set_value(tune_uid, value).await;
+        println!("{tune_uid}:{value}");
+        let res = x1.set_value(tune_uid, value).await;
+        println!("{res:?}");
     }
 }
 #[derive(Clone, Debug)]
@@ -92,3 +96,5 @@ impl Lights {
         self.light.lock().await.clone()
     }
 }
+
+pub struct LightDetails {}

@@ -4,11 +4,13 @@ use tokio::sync::Mutex;
 use crate::x1::X1;
 #[derive(Clone, Debug)]
 pub struct Blind {
+    pub uid: String,
     pub name: String,
     pub step_up_down: Option<StepUpDown>,
     pub up_down: Option<UpDown>,
     pub movement: Option<Movement>,
     pub position: Option<Position>,
+    pub location: Option<u16>,
 }
 
 impl Blind {
@@ -21,6 +23,24 @@ impl Blind {
         let up_down_uid = self.up_down.clone().expect("Error getting UpDown").uid;
 
         let _res = x1.set_value(up_down_uid, 1).await;
+    }
+    pub async fn step_up(&self, x1: &X1) {
+        let movement_uid = self
+            .step_up_down
+            .clone()
+            .expect("Error getting StepUpDown")
+            .uid;
+
+        let _res = x1.set_value(movement_uid, 0).await;
+    }
+    pub async fn step_down(&self, x1: &X1) {
+        let movement_uid = self
+            .step_up_down
+            .clone()
+            .expect("Error getting StepUpDown")
+            .uid;
+
+        let _res = x1.set_value(movement_uid, 1).await;
     }
 }
 

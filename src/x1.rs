@@ -16,6 +16,7 @@ pub struct X1 {
     ui: Arc<Mutex<Option<UiResponse>>>,
     pub lights: Lights,
     pub blinds: Blinds,
+    last_location: Arc<Mutex<u16>>,
 }
 
 impl X1 {
@@ -42,6 +43,7 @@ impl X1 {
             blinds: Blinds {
                 blinds: Arc::new(Mutex::new(vec![])),
             },
+            last_location: Arc::new(Mutex::new(0)),
         }
     }
 
@@ -258,6 +260,7 @@ impl X1 {
                         dimmer: mydimm_option,
                         tuner: mytuner_option,
                         color: mycolor_option,
+                        location: None,
                     };
                     self.lights.light.lock().await.push(mylight);
                 }
@@ -315,11 +318,13 @@ impl X1 {
                     }
 
                     let myblind = Blind {
+                        uid: function.uid.clone(),
                         name: function.displayName,
                         step_up_down: mystepupdown_option,
                         up_down: myupdown_option,
                         position: myposition_option,
                         movement: mymovement_option,
+                        location: None,
                     };
                     self.blinds.blinds.lock().await.push(myblind);
 
@@ -330,7 +335,63 @@ impl X1 {
             }
         }
     }
+
+    pub fn create_locations(&self) -> Location {
+        let mut root = Location {
+            id: Some(0),
+            parent_location: None,
+            displayName: "Home".to_string(),
+            functions: Some(vec![]),
+            locationType: "root".to_string(),
+            locations: Some(vec![]),
+        };
+        root.locations = Some(
+            self.ui
+                .try_lock()
+                .expect("Error locking UI")
+                .clone()
+                .expect("Error getting UI")
+                .locations,
+        );
+        root
+    }
+
+    pub fn set_location_id(&self, location: &mut Location) {
+        let mut last_location_id = self
+            .last_location
+            .try_lock()
+            .expect("Error locking last_location");
+        *last_location_id += 1;
+
+        location.id = Some(*last_location_id);
+        drop(last_location_id);
+
+        if let Some(functions) = &location.functions {
+            for function in functions {
+                let mut mylights = self.lights.light.try_lock().expect("Error locking lights");
+                for light in mylights.iter_mut() {
+                    if *function == light.uid {
+                        light.location = location.id;
+                    }
+                }
+                let mut myblinds = self.blinds.blinds.try_lock().expect("Error locking lights");
+                for blind in myblinds.iter_mut() {
+                    if *function == blind.uid {
+                        blind.location = location.id;
+                    }
+                }
+            }
+        }
+
+        if let Some(locations) = &mut location.locations {
+            for child_location in locations.iter_mut() {
+                child_location.parent_location = location.id;
+                self.set_location_id(child_location);
+            }
+        }
+    }
 }
+
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Function {
@@ -339,6 +400,7 @@ struct Function {
     displayName: String,
     functionType: String,
     uid: String,
+    location: Option<u16>,
 }
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -348,7 +410,9 @@ struct DataPoint {
 }
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Location {
+pub struct Location {
+    id: Option<u16>,
+    parent_location: Option<u16>,
     displayName: String,
     functions: Option<Vec<String>>,
     locationType: String,
