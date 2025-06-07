@@ -1,5 +1,6 @@
 use crate::covers::*;
 use crate::lights::*;
+use crate::locations::*;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -16,7 +17,9 @@ pub struct X1 {
     ui: Arc<Mutex<Option<UiResponse>>>,
     pub lights: Lights,
     pub blinds: Blinds,
+    pub locations: Locations,
     last_location: Arc<Mutex<u16>>,
+    pub connected: Arc<Mutex<bool>>,
 }
 
 impl X1 {
@@ -43,11 +46,16 @@ impl X1 {
             blinds: Blinds {
                 blinds: Arc::new(Mutex::new(vec![])),
             },
+            locations: Locations {
+                locations: Arc::new(Mutex::new(HashMap::new())),
+                set: Arc::new(Mutex::new(false)),
+            },
             last_location: Arc::new(Mutex::new(0)),
+            connected: Arc::new(Mutex::new(false)),
         }
     }
 
-    pub async fn connect(&self) {
+    pub async fn connect_x1(&self) {
         if self.token.lock().await.is_some() {
             println!("Already connected. Skipping");
             return;
@@ -190,7 +198,7 @@ impl X1 {
 
     pub async fn create_devices(&self) {
         let light_count: usize = self.lights.light.lock().await.len();
-        let blind_count: usize = 0;
+        let blind_count: usize = self.blinds.blinds.lock().await.len();
         if light_count + blind_count != 0 {
             println!("Already created devices. Skipping");
             return;
@@ -336,8 +344,8 @@ impl X1 {
         }
     }
 
-    pub fn create_locations(&self) -> Location {
-        let mut root = Location {
+    pub fn create_locations(&self) -> UiLocation {
+        let mut root = UiLocation {
             id: Some(0),
             parent_location: None,
             displayName: "Home".to_string(),
@@ -353,10 +361,12 @@ impl X1 {
                 .expect("Error getting UI")
                 .locations,
         );
+        self.set_location_id(&mut root);
+
         root
     }
 
-    pub fn set_location_id(&self, location: &mut Location) {
+    pub fn set_location_id(&self, location: &mut UiLocation) {
         let mut last_location_id = self
             .last_location
             .try_lock()
@@ -389,6 +399,36 @@ impl X1 {
                 self.set_location_id(child_location);
             }
         }
+
+        let mut location_ids: Vec<u16> = vec![];
+        for loc in location.locations.clone().unwrap_or(vec![]).iter() {
+            if let Some(id) = loc.id {
+                location_ids.push(id);
+            }
+        }
+        let location_id_map = Location {
+            id: location.id,
+            parent_location: location.parent_location,
+            displayName: location.displayName.clone(),
+            functions: location.functions.clone(),
+            locationType: location.locationType.clone(),
+            locations: Some(location_ids),
+        };
+        self.locations
+            .locations
+            .try_lock()
+            .expect("error locking locations")
+            .insert(location.id.unwrap(), location_id_map);
+    }
+    pub async fn connect(&self) {
+        if *self.connected.lock().await == true {
+            return;
+        }
+        self.connect_x1().await;
+        self.get_ui().await;
+        self.create_devices().await;
+        self.create_locations();
+        *self.connected.lock().await = true;
     }
 }
 
@@ -410,14 +450,15 @@ struct DataPoint {
 }
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Location {
+pub struct UiLocation {
     id: Option<u16>,
     parent_location: Option<u16>,
     displayName: String,
     functions: Option<Vec<String>>,
     locationType: String,
-    locations: Option<Vec<Location>>,
+    locations: Option<Vec<UiLocation>>,
 }
+
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Trade {
@@ -429,7 +470,7 @@ struct Trade {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UiResponse {
     functions: Vec<Function>,
-    locations: Vec<Location>,
+    locations: Vec<UiLocation>,
     trades: Vec<Trade>,
 }
 #[allow(non_snake_case)]
