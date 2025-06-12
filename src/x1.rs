@@ -1,4 +1,6 @@
 use crate::covers::*;
+use crate::function::X1Function;
+use crate::function::X1Functions;
 use crate::lights::*;
 use crate::locations::*;
 use serde::Deserialize;
@@ -17,6 +19,7 @@ pub struct X1 {
     ui: Arc<Mutex<Option<UiResponse>>>,
     pub lights: Lights,
     pub blinds: Blinds,
+    pub functions: X1Functions,
     pub locations: Locations,
     last_location: Arc<Mutex<u16>>,
     pub connected: Arc<Mutex<bool>>,
@@ -52,6 +55,9 @@ impl X1 {
             },
             last_location: Arc::new(Mutex::new(0)),
             connected: Arc::new(Mutex::new(false)),
+            functions: X1Functions {
+                functions: Arc::new(Mutex::new(HashMap::new())),
+            },
         }
     }
 
@@ -270,7 +276,12 @@ impl X1 {
                         color: mycolor_option,
                         location: None,
                     };
-                    self.lights.light.lock().await.push(mylight);
+                    self.lights.light.lock().await.push(mylight.clone());
+                    self.functions
+                        .functions
+                        .lock()
+                        .await
+                        .insert(function.uid.clone(), X1Function::LIGHT(mylight));
                 }
 
                 "de.gira.schema.channels.BlindWithPos" => {
@@ -278,6 +289,7 @@ impl X1 {
                     let mut myupdown_option: Option<UpDown> = None;
                     let mut myposition_option: Option<Position> = None;
                     let mut mymovement_option: Option<Movement> = None;
+                    let mut myslatpositon_option: Option<SlatPosition> = None;
 
                     for (pindex, point) in function.dataPoints.iter().enumerate() {
                         match point.name.as_str() {
@@ -321,6 +333,16 @@ impl X1 {
                                 };
                                 mymovement_option = Some(mymovement)
                             }
+                            "Slat-Position" => {
+                                let mymovement = SlatPosition {
+                                    uid: function.dataPoints[pindex].uid.clone(),
+                                    val: values
+                                        .get(function.dataPoints[pindex].uid.as_str())
+                                        .unwrap()
+                                        .to_owned(),
+                                };
+                                myslatpositon_option = Some(mymovement)
+                            }
                             _ => (),
                         }
                     }
@@ -332,9 +354,15 @@ impl X1 {
                         up_down: myupdown_option,
                         position: myposition_option,
                         movement: mymovement_option,
+                        slat_position: myslatpositon_option,
                         location: None,
                     };
-                    self.blinds.blinds.lock().await.push(myblind);
+                    self.blinds.blinds.lock().await.push(myblind.clone());
+                    self.functions
+                        .functions
+                        .lock()
+                        .await
+                        .insert(function.uid.clone(), X1Function::BLIND(myblind));
 
                     println!("Added blind")
                 }

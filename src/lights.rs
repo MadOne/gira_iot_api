@@ -98,3 +98,7 @@ impl Lights {
 }
 
 pub struct LightDetails {}
+
+pub enum Function {
+    LIGHT(Light),
+}

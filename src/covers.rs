@@ -10,6 +10,7 @@ pub struct Blind {
     pub up_down: Option<UpDown>,
     pub movement: Option<Movement>,
     pub position: Option<Position>,
+    pub slat_position: Option<SlatPosition>,
     pub location: Option<u16>,
 }
 
@@ -78,6 +79,12 @@ pub struct UpDown {
 
 #[derive(Clone, Debug)]
 pub struct Position {
+    pub uid: String,
+    pub val: u16,
+}
+
+#[derive(Clone, Debug)]
+pub struct SlatPosition {
     pub uid: String,
     pub val: u16,
 }
