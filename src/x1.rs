@@ -3,10 +3,12 @@ use crate::function::X1Function;
 use crate::function::X1Functions;
 use crate::lights::*;
 use crate::locations::*;
+
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
+
 use tokio::sync::Mutex;
 
 #[derive(Clone, Debug)]
@@ -456,6 +458,7 @@ impl X1 {
         self.get_ui().await;
         self.create_devices().await;
         self.create_locations();
+
         *self.connected.lock().await = true;
     }
 }

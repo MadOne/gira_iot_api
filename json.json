@@ -1,0 +1,10 @@
+{
+ "token": "token",
+ "events": [
+ {
+ "uid": "uid",
+ "value": "88"
+ }
+ ],
+ "failures": 666
+}

@@ -24,28 +24,27 @@ pub struct Light {
 }
 
 impl Light {
-    pub async fn switch_on(&self, x1: &X1) {
+    pub async fn switch_on(&mut self, x1: &X1) {
         let switch_uid = self.switch.clone().expect("Error getting Switch").uid;
-
         let _res = x1.set_value(switch_uid, 1).await;
+        self.switch.as_mut().unwrap().val = 1;
     }
-    pub async fn switch_off(&self, x1: &X1) {
+    pub async fn switch_off(&mut self, x1: &X1) {
         let switch_uid = self.switch.clone().expect("Error getting Switch").uid;
-        let res = x1.set_value(switch_uid, 0).await;
-        println!("{res:?}")
+        let _res = x1.set_value(switch_uid, 0).await;
+        self.switch.as_mut().unwrap().val = 0;
     }
 
-    pub async fn dimm(&self, x1: &X1, value: u16) {
+    pub async fn dimm(&mut self, x1: &X1, value: u16) {
         let dimm_uid = self.dimmer.clone().expect("Error getting Dimmer").uid;
         let _res = x1.set_value(dimm_uid, value).await;
+        self.dimmer.as_mut().unwrap().val = value;
     }
 
-    pub async fn tune(&self, x1: &X1, value: u16) {
-        println!("Tune fired2!");
+    pub async fn tune(&mut self, x1: &X1, value: u16) {
         let tune_uid = self.tuner.clone().expect("Error getting Tuner").uid;
-        println!("{tune_uid}:{value}");
-        let res = x1.set_value(tune_uid, value).await;
-        println!("{res:?}");
+        let _res = x1.set_value(tune_uid, value).await;
+        self.tuner.as_mut().unwrap().val = value;
     }
 }
 #[derive(Clone, Debug)]
@@ -98,7 +97,3 @@ impl Lights {
 }
 
 pub struct LightDetails {}
-
-pub enum Function {
-    LIGHT(Light),
-}
